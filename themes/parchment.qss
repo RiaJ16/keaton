@@ -1,0 +1,73 @@
+QWidget {
+    font-family: "Times New Roman";
+    font-size: 13pt;
+    color: #3b2f2f;
+    background: #f5f0d7; /* color pergamino */
+}
+
+QListView {
+    background: #f2e8c9;
+    border: 2px solid #d1c59d;
+    padding: 6px;
+    font-size: 12pt;
+    color: #4a3c2a;
+}
+
+QTextEdit {
+    background: #fcf7e8;
+    border: 2px solid #d1c59d;
+    padding: 12px;
+    font-size: 15pt;
+    line-height: 1.6em;
+    color: #2e1f0f;
+}
+
+QLineEdit {
+    background: #fdf8e4;
+    border: 1px solid #d1c59d;
+    padding: 5px;
+    font-size: 12pt;
+    color: #3b2f2f;
+}
+
+QPushButton {
+    background: #d1b97f;
+    color: #2e1f0f;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12pt;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background: #c4a86a;
+}
+
+QMenuBar {
+    background: #e8ddbb;
+    color: #2e1f0f;
+    font-size: 12pt;
+}
+
+QMenuBar::item:selected {
+    background: #d1b97f;
+    color: #fff;
+}
+
+QScrollBar::handle:vertical {
+    background: #9b9151;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #bfb368;
+}
+
+QScrollBar:vertical {
+    background: #ffffff;
+}
+
+QScrollBar::add-page:vertical:pressed,
+QScrollBar::sub-page:vertical:pressed {
+    background: #e1daad;   /* dorado claro al hacer click */
+}
+

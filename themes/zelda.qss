@@ -1,0 +1,77 @@
+QWidget {
+    font-family: "Georgia";
+    font-size: 13pt;
+    color: #f0e6c8;
+    background: #1e2f1c; /* verde oscuro bosque */
+}
+
+QListView {
+    background: #2c3e2a;
+    border: 2px solid #3b5d3b;
+    padding: 6px;
+    font-size: 12pt;
+    color: #e0d8a0;
+}
+
+QTextEdit {
+    background: #243924;
+    border: 2px solid #3b5d3b;
+    padding: 12px;
+    font-size: 15pt;
+    line-height: 1.6em;
+    color: #f0e6c8;
+}
+
+QLineEdit {
+    background: #2c3e2a;
+    border: 1px solid #a89c4f;
+    padding: 5px;
+    font-size: 12pt;
+    color: #f0e6c8;
+}
+
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #d4c45b, stop:1 #a89c4f); /* dorado */
+    color: #1e2f1c;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12pt;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #e6d878, stop:1 #b5a94f);
+}
+
+QMenuBar {
+    background: #2c3e2a;
+    color: #f0e6c8;
+    font-size: 12pt;
+}
+
+QMenuBar::item:selected {
+    background: #a89c4f;
+    color: #1e2f1c;
+}
+
+QScrollBar:vertical {
+    background: #2c3e2a;
+    width: 12px;
+    margin: 0px;
+    border: 1px solid #3b5d3b;
+}
+
+QScrollBar::handle:vertical {
+    background: #a89c4f;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #cbbf63;
+}
+
+QScrollBar::add-page:vertical:pressed,
+QScrollBar::sub-page:vertical:pressed {
+    background: transparent;   /* dorado claro al hacer click */
+}

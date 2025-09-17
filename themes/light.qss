@@ -1,0 +1,41 @@
+QWidget {
+    font-family: 'Segoe UI';
+    font-size: 12pt;
+    color: #222;
+    background: #f8f9fa;
+}
+
+QListView {
+    background: #ffffff;
+    border: 1px solid #ccc;
+    padding: 5px;
+    font-size: 11pt;
+}
+
+QTextEdit {
+    background: #ffffff;
+    border: 1px solid #ccc;
+    padding: 10px;
+    font-size: 15pt;
+    line-height: 1.5em;
+}
+
+QPushButton {
+    background: #0078d7;
+    color: white;
+    border-radius: 4px;
+    padding: 6px 12px;
+}
+
+QScrollBar::handle:vertical {
+    background: #f8f9fa;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #ffffff;
+}
+
+QScrollBar::add-page:vertical:pressed,
+QScrollBar::sub-page:vertical:pressed {
+    background: #e4e4e4;   /* dorado claro al hacer click */
+}
