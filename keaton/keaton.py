@@ -11,9 +11,9 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QMenuBar, QTextBrowser, QPushButton, QLabel, QTextEdit
 )
 
-from bbcode_parser import build_bbcode_parser
-from mensaje_preview import MensajePreview
-from utils import format_date, load_settings, save_setting, \
+from .bbcode_parser import build_bbcode_parser
+from .mensaje_preview import MensajePreview
+from .utils import format_date, load_settings, save_setting, \
     accent_insensitive_regex, strip_accents
 
 
@@ -179,7 +179,6 @@ class Keaton(QMainWindow):
         self.load_messages(query if query else None)
 
     def change_theme(self, theme_file):
-        """Cambia el tema al vuelo"""
         theme_path = os.path.join(self.themes_dir, theme_file)
         load_theme(self.app, theme_path)
         theme_key = theme_file.replace(".qss", "").lower()

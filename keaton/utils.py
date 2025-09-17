@@ -22,7 +22,9 @@ def strip_bbcode(text: str) -> str:
 def get_user_color(user):
     colors = {
         'pali': "#638db6",
+        'riaj': "#638db6",
         'xavier': "#fb6160",
+        'regol': "#fb6160",
         'säbel': "#ff5694",
         'zafiro bladen': "#ac97ff",
         'soria': "#65bdf3",

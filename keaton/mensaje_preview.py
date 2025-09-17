@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QStyledItemDelegate, QStyle
 from PySide6.QtGui import QFont, QColor
 from PySide6.QtCore import QRect, QSize, Qt
 
-from utils import strip_bbcode, get_user_color
+from .utils import strip_bbcode, get_user_color
 
 
 class MensajePreview(QStyledItemDelegate):
