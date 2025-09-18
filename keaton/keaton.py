@@ -26,9 +26,12 @@ class Keaton(QMainWindow):
         self.themes_dir = "themes"
         self.app = app
         settings = load_settings()
+        self.themes_menu = None
+        self.load_menus()
         self.change_theme(f"{settings.get('theme')}.qss")
         # self.setWindowTitle("El Templo de Piedra")
         self.resize(1200, 700)
+        self.thread_id = 0
         self.data = []
 
         self.filtered = []
@@ -39,9 +42,9 @@ class Keaton(QMainWindow):
         self.search_timer_post.setSingleShot(True)
         self.search_timer_post.timeout.connect(self.highlight_all)
         self.message_list = QListView()
-        self.message_model = QStringListModel()
         self.search_box = QLineEdit()
 
+        self.current_post_id = 0
         self.matches = []
         self.post_search_bar = QWidget()
         self.post_search_input = QLineEdit()
@@ -56,43 +59,7 @@ class Keaton(QMainWindow):
     def init_ui(self):
         main_splitter = QSplitter(Qt.Horizontal)
 
-        # --- Menú de temas ---
-        menubar = QMenuBar(self)
-        theme_menu = menubar.addMenu("Temas")
-
-        theme_icons = {
-            "zelda": "icons/triforce.svg",
-            "parchment": "icons/parchment.svg",
-            "light": "icons/sun.svg",
-            "dark": "icons/moon.svg",
-            "default": "icons/default.svg"
-        }
-
-        # Lista de temas disponibles en la carpeta "themes"
-        if os.path.exists(self.themes_dir):
-            for file in os.listdir(self.themes_dir):
-                if file.endswith(".qss"):
-                    theme_name = file.replace(".qss", "")
-                    action = QAction(theme_name, self)
-                    icon_path = theme_icons.get(theme_name.lower(), theme_icons["default"])
-                    if os.path.exists(icon_path):
-                        action.setIcon(QIcon(icon_path))
-                    action.triggered.connect(lambda checked, f=file: self.change_theme(f))
-                    theme_menu.addAction(action)
-
-        self.setMenuBar(menubar)
-        thread_menu = menubar.addMenu("Hilos")
-
-        if os.path.exists(self.threads_dir):
-            for file in os.listdir(self.threads_dir):
-                if file.endswith(".json"):
-                    action = QAction(file.rstrip(".json"), self)
-                    action.triggered.connect(
-                        lambda checked, f=file: self.load_thread(f))
-                    thread_menu.addAction(action)
-
         # Lista de mensajes
-        self.message_list.setModel(self.message_model)
         main_splitter.addWidget(self.message_list)
 
         # Vista de contenido
@@ -136,9 +103,6 @@ class Keaton(QMainWindow):
         # Conexiones
         self.message_list.clicked.connect(self.show_message)
 
-        # Cargar mensajes al inicio
-        self.load_messages()
-
     def load_messages(self, query=None):
         model = QStandardItemModel()
         self.filtered = []
@@ -154,6 +118,7 @@ class Keaton(QMainWindow):
             item = QStandardItem()
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             item.setData({
+                "post_id": msg["post_id"],
                 "username": msg["username"],
                 "date": format_date(msg["post_date"]),
                 "preview": preview,
@@ -163,8 +128,11 @@ class Keaton(QMainWindow):
             self.filtered.append(msg)
         self.message_list.setModel(model)
         self.message_list.setItemDelegate(MensajePreview())
+        self.select_index_by_post_id(self.current_post_id)
 
     def show_message(self, index):
+        self.current_post_id = index.data(Qt.UserRole).get("post_id")
+        save_setting(f"current_post_id_{self.thread_id}", self.current_post_id)
         msg = self.filtered[index.row()]
         parser = build_bbcode_parser()
         html = parser.format(msg["message"])
@@ -174,9 +142,59 @@ class Keaton(QMainWindow):
         self.message_view.setHtml(html)
         self.highlight_all()
 
+    def select_index_by_post_id(self, post_id, first_load=False):
+        index = None
+        model = self.message_list.model()
+        found = False
+        for row in range(model.rowCount()):
+            index = model.index(row, 0)
+            data = index.data(Qt.UserRole)
+            if data and data.get("post_id") == post_id:
+                found = True
+                break
+        if index and found:
+            self.message_list.setCurrentIndex(index)
+            if first_load:
+                self.show_message(index)
+
     def search_messages(self):
         query = self.search_box.text().strip()
         self.load_messages(query if query else None)
+
+    def load_menus(self):
+        menubar = QMenuBar(self)
+        games_menu = menubar.addMenu("Juegos")
+        self.themes_menu = menubar.addMenu("Temas")
+
+        theme_icons = {
+            "zelda": "icons/triforce.svg",
+            "parchment": "icons/parchment.svg",
+            "light": "icons/sun.svg",
+            "dark": "icons/moon.svg",
+            "default": "icons/default.svg"
+        }
+
+        # Lista de temas disponibles en la carpeta "themes"
+        if os.path.exists(self.themes_dir):
+            for file in os.listdir(self.themes_dir):
+                if file.endswith(".qss"):
+                    theme_name = file.replace(".qss", "")
+                    action = QAction(theme_name, self)
+                    icon_path = theme_icons.get(theme_name.lower(), theme_icons["default"])
+                    if os.path.exists(icon_path):
+                        action.setIcon(QIcon(icon_path))
+                    action.triggered.connect(lambda checked, f=file: self.change_theme(f))
+                    self.themes_menu.addAction(action)
+
+        self.setMenuBar(menubar)
+
+        if os.path.exists(self.threads_dir):
+            for file in os.listdir(self.threads_dir):
+                if file.endswith(".json"):
+                    action = QAction(file.rstrip(".json"), self)
+                    action.triggered.connect(
+                        lambda checked, f=file: self.load_thread(f))
+                    games_menu.addAction(action)
 
     def change_theme(self, theme_file):
         theme_path = os.path.join(self.themes_dir, theme_file)
@@ -192,6 +210,8 @@ class Keaton(QMainWindow):
             self.setWindowIcon(QIcon("icons/moon.svg"))
         else:
             self.setWindowIcon(QIcon("icons/default.svg"))
+        if self.themes_menu:
+            self.themes_menu.setTitle(theme_key)
         save_setting("theme", theme_key)
 
     def search_with_delay(self):
@@ -204,7 +224,11 @@ class Keaton(QMainWindow):
         if filename:
             path = os.path.join(self.threads_dir, filename)
             self.load_messages_from_file(path)
+            settings = load_settings()
+            self.current_post_id = settings.get(
+                f"current_post_id_{self.thread_id}")
             self.load_messages()
+            self.select_index_by_post_id(self.current_post_id, True)
             self.setWindowTitle(f"Keaton - {filename.rstrip('.json')}")
             save_setting("json_file", filename)
 
@@ -212,6 +236,10 @@ class Keaton(QMainWindow):
         # Cargar datos
         with open(json_file, "r", encoding="utf-8") as f:
             self.data = json.load(f)
+        try:
+            self.thread_id = self.data[0].get("thread_id")
+        except IndexError:
+            pass
         for msg in self.data:
             msg["message_norm"] = strip_accents(msg["message"].lower())
             msg["username_norm"] = strip_accents(msg["username"].lower())

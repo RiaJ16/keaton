@@ -1,4 +1,11 @@
 {
   "theme": "dark",
-  "json_file": "El Templo de Piedra.json"
+  "json_file": "El Templo de Piedra.json",
+  "current_post_id": 201803,
+  "current_post_id_4062": 201802,
+  "current_post_id_1115": 27288,
+  "current_post_id_1221": 30791,
+  "saved_post_id_1115": 27285,
+  "saved_post_id_4062": 201803,
+  "saved_post_id_1221": 30783
 }
