@@ -46,6 +46,7 @@ class Keaton(QMainWindow):
         self.resize(1200, 700)
         self.thread_id = 0
         self.data = []
+        self.total_len = 0
 
         self.filtered = []
         self.search_timer = QTimer(self)
@@ -156,10 +157,9 @@ class Keaton(QMainWindow):
 
     def actualizar_barra_de_estado(self, index):
         current_pos = next((i for i, msg in enumerate(self.data) if msg.get("post_id") == self.current_post_id), -1)
-        total_len = sum(len(m["message"]) for m in self.data) or 1
         accumulated_len = sum(
-            len(self.data[i]["message"]) for i in range(current_pos + 1))
-        percentage = (accumulated_len / total_len) * 100
+            len(self.data[i]["message_norm"]) for i in range(current_pos + 1))
+        percentage = (accumulated_len / self.total_len) * 100
         pos = index.row() + 1
         total = len(self.filtered)
         self.status_left.setText(f"{pos} / {total}")
@@ -269,9 +269,36 @@ class Keaton(QMainWindow):
             self.thread_id = self.data[0].get("thread_id")
         except IndexError:
             pass
-        for msg in self.data:
-            msg["message_norm"] = strip_accents(msg["message"].lower())
-            msg["username_norm"] = strip_accents(msg["username"].lower())
+
+        read_cache = False
+        cache_file = json_file + ".cache"
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    cache = json.load(f)
+                if len(cache) == len(self.data) and all(
+                        c["post_id"] == d["post_id"] for c, d in
+                        zip(cache, self.data)
+                ):
+                    for msg, cached in zip(self.data, cache):
+                        msg["message_norm"] = cached["message_norm"]
+                        msg["username_norm"] = cached["username_norm"]
+                    read_cache = True
+            except (json.decoder.JSONDecodeError, KeyError):
+                pass
+        if not read_cache:
+            cache = []
+            for msg in self.data:
+                msg["message_norm"] = strip_accents(msg["message"].lower())
+                msg["username_norm"] = strip_accents(msg["username"].lower())
+                cache.append({
+                    "post_id": msg["post_id"],
+                    "message_norm": msg["message_norm"],
+                    "username_norm": msg["username_norm"]
+                })
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(cache, f, ensure_ascii=False)
+        self.total_len = sum(len(m["message_norm"]) for m in self.data) or 1
 
     def toggle_post_search(self, visible):
         self.post_search_bar.setVisible(visible)
