@@ -44,7 +44,7 @@ class MensajePreview(QStyledItemDelegate):
 
         # --- Indicador de actualización ---
         clean_message = strip_bbcode(data["message"]).lstrip().lower()
-        if clean_message.startswith("actualización") or clean_message.startswith("miniactualización"):
+        if clean_message.startswith("actualización") or clean_message.startswith("miniactualización") or clean_message.startswith("interludio"):
             badge_text = "Actualización"
             badge_font = QFont("Segoe UI", 8, QFont.Bold)
             painter.setFont(badge_font)

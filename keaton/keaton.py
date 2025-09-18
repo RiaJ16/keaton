@@ -2,19 +2,20 @@ import json
 import os
 import re
 
-from PySide6.QtCore import Qt, QStringListModel, QTimer, QRegularExpression
-from PySide6.QtGui import QAction, QIcon, QStandardItemModel, QStandardItem, \
-    QDesktopServices, QShortcut, QKeySequence, QTextDocument, QTextCursor, \
-    QTextCharFormat, QColor
+from PySide6.QtCore import Qt, QTimer, QRegularExpression
+from PySide6.QtGui import (QAction, QIcon, QStandardItemModel, QStandardItem,
+    QDesktopServices, QShortcut, QKeySequence, QTextCursor,
+    QTextCharFormat, QColor)
 from PySide6.QtWidgets import (
     QMainWindow, QSplitter, QListView, QWidget, QVBoxLayout, QLineEdit,
-    QHBoxLayout, QMenuBar, QTextBrowser, QPushButton, QLabel, QTextEdit
+    QHBoxLayout, QMenuBar, QTextBrowser, QPushButton, QLabel, QTextEdit,
+    QProgressBar
 )
 
 from .bbcode_parser import build_bbcode_parser
 from .mensaje_preview import MensajePreview
-from .utils import format_date, load_settings, save_setting, \
-    accent_insensitive_regex, strip_accents
+from .utils import (format_date, load_settings, save_setting,
+    accent_insensitive_regex, strip_accents)
 
 
 class Keaton(QMainWindow):
@@ -25,11 +26,23 @@ class Keaton(QMainWindow):
 
         self.themes_dir = "themes"
         self.app = app
+        self.status = self.statusBar()
+        self.status.setStyleSheet(
+            "QStatusBar::item { border: 0px solid transparent; }")
+        self.status_left = QLabel("")
+        self.status_left.setContentsMargins(15, 0, 0, 0)
+        self.progress_label = QLabel("0.00%")
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setFixedWidth(200)
+        self.progress_bar.setTextVisible(False)
+        self.status.addWidget(self.status_left)
+        self.status.addPermanentWidget(self.progress_bar)
+        self.status.addPermanentWidget(self.progress_label)
         settings = load_settings()
         self.themes_menu = None
         self.load_menus()
         self.change_theme(f"{settings.get('theme')}.qss")
-        # self.setWindowTitle("El Templo de Piedra")
+        self.change_theme(f"{settings.get('theme')}.qss")
         self.resize(1200, 700)
         self.thread_id = 0
         self.data = []
@@ -76,6 +89,7 @@ class Keaton(QMainWindow):
         right_widget = QWidget()
         layout = QVBoxLayout(right_widget)
         layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.message_view)
         layout.addWidget(self.post_search_bar)
         self.post_search_bar.setVisible(False)
@@ -136,11 +150,21 @@ class Keaton(QMainWindow):
         msg = self.filtered[index.row()]
         parser = build_bbcode_parser()
         html = parser.format(msg["message"])
-        # for ms in self.filtered:
-        #     print(ms['post_id'])
-        # self.message_view.setHtml(parser.format("[img]R:/Users/Jair/Pictures/3t7Bwwm.jpg[/img]"))
         self.message_view.setHtml(html)
         self.highlight_all()
+        self.actualizar_barra_de_estado(index)
+
+    def actualizar_barra_de_estado(self, index):
+        current_pos = next((i for i, msg in enumerate(self.data) if msg.get("post_id") == self.current_post_id), -1)
+        total_len = sum(len(m["message"]) for m in self.data) or 1
+        accumulated_len = sum(
+            len(self.data[i]["message"]) for i in range(current_pos + 1))
+        percentage = (accumulated_len / total_len) * 100
+        pos = index.row() + 1
+        total = len(self.filtered)
+        self.status_left.setText(f"{pos} / {total}")
+        self.progress_bar.setValue(int(percentage))
+        self.progress_label.setText(f"{percentage:.2f}%")
 
     def select_index_by_post_id(self, post_id, first_load=False):
         index = None
@@ -156,10 +180,15 @@ class Keaton(QMainWindow):
             self.message_list.setCurrentIndex(index)
             if first_load:
                 self.show_message(index)
+            else:
+                self.actualizar_barra_de_estado(index)
 
     def search_messages(self):
         query = self.search_box.text().strip()
         self.load_messages(query if query else None)
+        self.post_search_input.setText(self.search_box.text().strip())
+        self.post_search_bar.setVisible(True)
+        self.highlight_all()
 
     def load_menus(self):
         menubar = QMenuBar(self)
@@ -179,7 +208,7 @@ class Keaton(QMainWindow):
             for file in os.listdir(self.themes_dir):
                 if file.endswith(".qss"):
                     theme_name = file.replace(".qss", "")
-                    action = QAction(theme_name, self)
+                    action = QAction(theme_name.capitalize(), self)
                     icon_path = theme_icons.get(theme_name.lower(), theme_icons["default"])
                     if os.path.exists(icon_path):
                         action.setIcon(QIcon(icon_path))
@@ -211,7 +240,7 @@ class Keaton(QMainWindow):
         else:
             self.setWindowIcon(QIcon("icons/default.svg"))
         if self.themes_menu:
-            self.themes_menu.setTitle(theme_key)
+            self.themes_menu.setTitle(f"{theme_key.capitalize()} Theme")
         save_setting("theme", theme_key)
 
     def search_with_delay(self):
@@ -305,8 +334,6 @@ class Keaton(QMainWindow):
         # Highlight
         self.post_search_input.textChanged.connect(lambda: self.search_timer_post.start(400))
 
-    from PySide6.QtWidgets import QTextEdit
-
     def highlight_all(self):
         # limpiar resaltados anteriores
         self.message_view.setExtraSelections([])
@@ -316,6 +343,7 @@ class Keaton(QMainWindow):
         self.matches = []
 
         if not text:
+            self.post_search_input.setStyleSheet("")
             return
 
         # formato de resaltado
@@ -344,6 +372,10 @@ class Keaton(QMainWindow):
             sel.format = extra_format
             selections.append(sel)
 
+        if self.matches:
+            self.post_search_input.setStyleSheet("")
+        else:
+            self.post_search_input.setStyleSheet("background-color: #eb4d4b;")
         self.message_view.setExtraSelections(selections)
 
         # resetear índice actual
