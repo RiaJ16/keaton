@@ -67,3 +67,16 @@ QStatusBar QLabel{
     font-family: "Segoe UI";
     font-weight: bold;
 }
+
+QToolButton{
+    border: none;
+    padding: 5px;
+}
+
+QToolButton::menu-indicator{
+    image: none;
+}
+
+QToolButton::hover{
+    background-color: #373737;
+}

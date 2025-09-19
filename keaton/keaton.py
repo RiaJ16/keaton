@@ -2,27 +2,30 @@ import json
 import os
 import re
 
-from PySide6.QtCore import Qt, QTimer, QRegularExpression
+from PySide6.QtCore import Qt, QTimer, QRegularExpression, QSize
 from PySide6.QtGui import (QAction, QIcon, QStandardItemModel, QStandardItem,
-    QDesktopServices, QShortcut, QKeySequence, QTextCursor,
-    QTextCharFormat, QColor)
+                           QDesktopServices, QShortcut, QKeySequence,
+                           QTextCursor,
+                           QTextCharFormat, QColor)
 from PySide6.QtWidgets import (
     QMainWindow, QSplitter, QListView, QWidget, QVBoxLayout, QLineEdit,
-    QHBoxLayout, QMenuBar, QTextBrowser, QPushButton, QLabel, QTextEdit,
-    QProgressBar
+    QHBoxLayout, QTextBrowser, QPushButton, QLabel, QTextEdit,
+    QProgressBar, QMenu, QToolButton, QSizePolicy
 )
 
 from .bbcode_parser import build_bbcode_parser
 from .mensaje_preview import MensajePreview
+from ui import keaton_rc
 from .utils import (format_date, load_settings, save_setting,
-    accent_insensitive_regex, strip_accents)
+                    accent_insensitive_regex, strip_accents)
 
 
 class Keaton(QMainWindow):
 
-    def __init__(self, json_file, app):
+    def __init__(self, app):
         super().__init__()
         self.threads_dir = "threads"
+        self.setWindowIcon(QIcon(":/main/icons/keaton.png"))
 
         self.themes_dir = "themes"
         self.app = app
@@ -39,8 +42,9 @@ class Keaton(QMainWindow):
         self.status.addPermanentWidget(self.progress_bar)
         self.status.addPermanentWidget(self.progress_label)
         settings = load_settings()
-        self.themes_menu = None
-        self.load_menus()
+        self.boton_games = QToolButton()
+        self.boton_temas = QToolButton()
+        self.boton_temas.setIconSize(QSize(30, 30))
         self.change_theme(f"{settings.get('theme')}.qss")
         self.change_theme(f"{settings.get('theme')}.qss")
         self.resize(1200, 700)
@@ -55,6 +59,8 @@ class Keaton(QMainWindow):
         self.search_timer_post = QTimer(self)
         self.search_timer_post.setSingleShot(True)
         self.search_timer_post.timeout.connect(self.highlight_all)
+        self.barra_de_herramientas = QWidget()
+        self.load_menus()
         self.message_list = QListView()
         self.search_box = QLineEdit()
 
@@ -111,6 +117,8 @@ class Keaton(QMainWindow):
         # self.search_box.signal_cleared.connect(self.search_messages)
         search_layout.addWidget(self.search_box)
 
+        self.barra_de_herramientas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        layout.addWidget(self.barra_de_herramientas)
         layout.addLayout(search_layout)
         layout.addWidget(main_splitter)
         self.setCentralWidget(central_widget)
@@ -144,13 +152,17 @@ class Keaton(QMainWindow):
         self.message_list.setModel(model)
         self.message_list.setItemDelegate(MensajePreview())
         self.select_index_by_post_id(self.current_post_id)
+        if len(self.filtered) > 0:
+            self.search_box.setStyleSheet("")
+        else:
+            self.search_box.setStyleSheet("background-color: #eb4d4b;")
 
     def show_message(self, index):
         self.current_post_id = index.data(Qt.UserRole).get("post_id")
         save_setting(f"current_post_id_{self.thread_id}", self.current_post_id)
         msg = self.filtered[index.row()]
         parser = build_bbcode_parser()
-        html = parser.format(msg["message"])
+        html = parser.format(msg.get("message"))
         self.message_view.setHtml(html)
         self.highlight_all()
         self.actualizar_barra_de_estado(index)
@@ -191,9 +203,21 @@ class Keaton(QMainWindow):
         self.highlight_all()
 
     def load_menus(self):
-        menubar = QMenuBar(self)
-        games_menu = menubar.addMenu("Juegos")
-        self.themes_menu = menubar.addMenu("Temas")
+        games_menu = QMenu(self.boton_games)
+        themes_menu = QMenu(self.boton_temas)
+
+        self.boton_games.setText("Seleccionar juego...")
+        self.boton_games.setMenu(games_menu)
+        self.boton_games.setPopupMode(QToolButton.InstantPopup)
+        self.boton_temas.setMenu(themes_menu)
+        self.boton_temas.setPopupMode(QToolButton.InstantPopup)
+        self.boton_temas.setText("Temas")
+        layout = QHBoxLayout()
+        layout.addWidget(self.boton_games)
+        layout.addStretch()
+        layout.addWidget(self.boton_temas)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.barra_de_herramientas.setLayout(layout)
 
         theme_icons = {
             "zelda": "icons/triforce.svg",
@@ -213,14 +237,12 @@ class Keaton(QMainWindow):
                     if os.path.exists(icon_path):
                         action.setIcon(QIcon(icon_path))
                     action.triggered.connect(lambda checked, f=file: self.change_theme(f))
-                    self.themes_menu.addAction(action)
-
-        self.setMenuBar(menubar)
+                    themes_menu.addAction(action)
 
         if os.path.exists(self.threads_dir):
             for file in os.listdir(self.threads_dir):
                 if file.endswith(".json"):
-                    action = QAction(file.rstrip(".json"), self)
+                    action = QAction(file.split("#")[-1].rstrip(".json"), self)
                     action.triggered.connect(
                         lambda checked, f=file: self.load_thread(f))
                     games_menu.addAction(action)
@@ -229,18 +251,18 @@ class Keaton(QMainWindow):
         theme_path = os.path.join(self.themes_dir, theme_file)
         load_theme(self.app, theme_path)
         theme_key = theme_file.replace(".qss", "").lower()
-        if theme_file.lower().startswith("zelda"):
-            self.setWindowIcon(QIcon("icons/triforce.svg"))
-        elif theme_file.lower().startswith("parchment"):
-            self.setWindowIcon(QIcon("icons/parchment.svg"))
-        elif theme_file.lower().startswith("light"):
-            self.setWindowIcon(QIcon("icons/sun.svg"))
-        elif theme_file.lower().startswith("dark"):
-            self.setWindowIcon(QIcon("icons/moon.svg"))
-        else:
-            self.setWindowIcon(QIcon("icons/default.svg"))
-        if self.themes_menu:
-            self.themes_menu.setTitle(f"{theme_key.capitalize()} Theme")
+
+        icons = {
+            "zelda": "icons/triforce.svg",
+            "parchment": "icons/parchment.svg",
+            "light": "icons/sun.svg",
+            "dark": "icons/moon.svg",
+            "default": "icons/default.svg"
+        }
+        icono = QIcon(icons.get(theme_key))
+
+        self.boton_temas.setText(f"{theme_key.capitalize()} Theme")
+        self.boton_temas.setIcon(icono)
         save_setting("theme", theme_key)
 
     def search_with_delay(self):
@@ -258,13 +280,18 @@ class Keaton(QMainWindow):
                 f"current_post_id_{self.thread_id}")
             self.load_messages()
             self.select_index_by_post_id(self.current_post_id, True)
-            self.setWindowTitle(f"Keaton - {filename.rstrip('.json')}")
+            new_filename = filename.split("#")[-1].rstrip(".json")
+            self.setWindowTitle(f"Keaton - {new_filename}")
+            self.boton_games.setText(new_filename)
             save_setting("json_file", filename)
 
     def load_messages_from_file(self, json_file):
         # Cargar datos
-        with open(json_file, "r", encoding="utf-8") as f:
-            self.data = json.load(f)
+        try:
+            with open(json_file, "r", encoding="utf-8") as f:
+                self.data = json.load(f)
+        except FileNotFoundError:
+            pass
         try:
             self.thread_id = self.data[0].get("thread_id")
         except IndexError:
@@ -419,3 +446,41 @@ def load_theme(app_, theme_file):
             qss += "\n" + f.read()
     app_.setStyleSheet(qss)
 
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣤⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣤⣾⠿⣻⣿⠟⠁⠀⠀⠀⠀⣠⣾⡆⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣴⡿⠟⢉⣴⣾⠟⠁⠀⠀⠀⢀⣴⡿⠋⣿⠇⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⣾⠟⠉⢀⣴⣿⠟⠁⠀⠀⠀⢀⣴⡿⠋⠀⣸⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣴⡿⠟⠁⠀⣠⣾⠟⠁⠀⠀⠀⢀⣴⡿⠋⠀⠀⢠⣿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⡿⠋⠀⠀⢀⣾⡿⠁⠀⠀⠀⢀⣴⡿⠋⠀⠀⠀⢀⣾⠇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⠟⠁⠀⠀⣰⣿⠏⠀⠀⠀⢀⣴⡿⠋⠀⠀⠀⠀⠀⣼⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⡿⠃⠀⠀⠀⣴⡿⠁⠀⠀⢀⣴⣿⠟⠁⠀⠀⠀⠀⠀⣼⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⠟⠁⠀⠀⠀⣸⡿⠁⠀⠀⣴⣿⠟⠁⠀⠀⠀⠀⠀⠀⣸⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣾⠏⠀⠀⠀⠀⢠⣿⠃⢀⣴⣾⠟⠁⠀⠀⠀⠀⠀⠀⠀⣼⡿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⠏⠀⠀⠀⠀⠀⠸⣿⣶⡿⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⣼⡿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣼⡟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⠟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣴⡿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⠏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡇⣿⣷⡀⠀⠀⠀⣠⣴⣶⣶⠀⠀⠀⣠⣾⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢹⣧⢻⣿⡇⠀⢀⣾⣿⣿⣿⡟⠀⣠⣾⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢿⣮⡙⠃⠀⠈⠻⠿⠟⣋⣴⡿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⣿⣿⣿⣿⣿⠿⣿⣿⣿⣿⣅⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⣿⣦⡘⠀⠀⠀⢠⣾⡿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣶⡶⣶⡄
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣿⣇⡀⣀⢀⣼⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣾⠏⣿⣿⢎⣷
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⡟⣸⡇⢿⣆⢻⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣤⡶⢟⣫⣵⡶⣶⡿⠿⠃
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⠃⣿⡇⠸⣿⡎⢻⣿⣿⣿⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣴⡶⢟⣫⣽⠾⠛⠉⠁⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⡿⣿⣿⠃⠀⣿⡇⠀⢻⣿⡄⠘⠿⣿⣿⣿⣿⣦⣄⠀⢀⣠⣴⡾⢟⣫⣵⠾⠛⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⡿⢋⣼⡿⠃⠀⢸⣿⠃⠀⠀⠻⣿⣆⠀⠈⠻⣿⣷⣝⠻⣿⣿⣯⣴⠾⠛⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣼⡿⠋⣠⣿⡿⠁⠀⠀⢸⣿⠀⠀⠀⠀⠹⣿⣧⡀⠀⠈⠙⢿⣷⣮⡻⣿⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⡿⠁⣰⣿⠟⠀⠀⠀⠀⣿⡟⢿⠀⠀⠀⠀⠈⢿⣷⣄⠀⠀⠀⠙⢿⣿⣌⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣿⣧⣴⣿⡟⠀⠀⠀⠀⢸⣿⠃⠀⠀⠀⠀⠀⠀⠀⠻⣿⣦⠀⠀⣠⣾⣿⣿⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠻⣿⣤⣄⣀⠀⠀⣿⡿⠠⠀⠀⠀⠀⠀⣀⣤⣤⣿⣿⣷⣾⠿⢿⡿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣽⡿⠿⠿⠿⣿⣿⣶⣶⣶⣶⣶⣿⣿⣿⣿⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣴⠾⠛⠉⣀⣤⡶⠟⠛⠉⠉⢿⣿⣇⠀⠀⢹⣿⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⡶⠟⢋⣡⣴⠶⠟⠋⠁⠀⠀⠀⠀⠀⠘⣿⣿⡀⠀⠸⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣴⠾⢛⣡⣴⠾⠛⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢹⣿⡇⠀⠀⣿⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⢀⣠⡴⣚⣭⡶⠟⠋⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣿⣿⠀⠀⢹⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⣀⣤⣶⣿⠷⠛⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⠀⠀⢸⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⢀⣴⡾⠿⠛⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⣿⡆⠀⢸⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⡇⠀⢸⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+# ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠘⠃⠀⠈⠟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀

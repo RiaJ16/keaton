@@ -20,3 +20,10 @@ QTextEdit {
     line-height: 1.6em;
 }
 
+QToolButton::hover{
+    background-color: #373737;
+}
+
+QMenu::item:selected{
+    background-color: #373737;
+}

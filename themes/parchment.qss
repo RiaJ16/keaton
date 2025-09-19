@@ -71,3 +71,10 @@ QScrollBar::sub-page:vertical:pressed {
     background: #e1daad;   /* dorado claro al hacer click */
 }
 
+QToolButton::hover{
+    background-color: #d1b97f;
+}
+
+QMenu::item:selected{
+    background-color: #d1b97f;
+}
