@@ -1,6 +1,7 @@
 import json
 import os
 import re
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QRegularExpression, QSize
 from PySide6.QtGui import (QAction, QIcon, QStandardItemModel, QStandardItem,
@@ -90,6 +91,8 @@ class Keaton(QMainWindow):
         self.message_view.setOpenLinks(False)
         self.message_view.anchorClicked.connect(
             lambda url: QDesktopServices.openUrl(url))
+        # self.message_view.verticalScrollBar().valueChanged.connect(
+        #     self.check_scroll_end)
 
         self.create_search_bar()
 
@@ -195,6 +198,17 @@ class Keaton(QMainWindow):
             else:
                 self.actualizar_barra_de_estado(index)
 
+    def get_first_post_id(self):
+        data = None
+        model = self.message_list.model()
+        if model and model.rowCount() > 0:
+            first_index = model.index(0, 0)
+            data = first_index.data(Qt.UserRole)
+        if data:
+            return data.get("post_id")
+        else:
+            return 0
+
     def search_messages(self):
         query = self.search_box.text().strip()
         self.load_messages(query if query else None)
@@ -239,13 +253,18 @@ class Keaton(QMainWindow):
                     action.triggered.connect(lambda checked, f=file: self.change_theme(f))
                     themes_menu.addAction(action)
 
+        actions = []
         if os.path.exists(self.threads_dir):
             for file in os.listdir(self.threads_dir):
                 if file.endswith(".json"):
-                    action = QAction(file.split("#")[-1].rstrip(".json"), self)
+                    id_, name = file.split("#")
+                    action = QAction(Path(name).stem, self)
+                    action.setData(int(id_))
                     action.triggered.connect(
                         lambda checked, f=file: self.load_thread(f))
-                    games_menu.addAction(action)
+                    actions.append(action)
+        actions = sorted(actions, key=lambda action_: action_.data())
+        games_menu.addActions(actions)
 
     def change_theme(self, theme_file):
         theme_path = os.path.join(self.themes_dir, theme_file)
@@ -279,8 +298,10 @@ class Keaton(QMainWindow):
             self.current_post_id = settings.get(
                 f"current_post_id_{self.thread_id}")
             self.load_messages()
+            if not self.current_post_id:
+                self.current_post_id = self.get_first_post_id()
             self.select_index_by_post_id(self.current_post_id, True)
-            new_filename = filename.split("#")[-1].rstrip(".json")
+            new_filename = Path(filename.split("#")[-1]).stem
             self.setWindowTitle(f"Keaton - {new_filename}")
             self.boton_games.setText(new_filename)
             save_setting("json_file", filename)
@@ -435,6 +456,18 @@ class Keaton(QMainWindow):
         # resetear índice actual
         self.current_match_index = -1
         self.find_next()
+
+    def check_scroll_end(self, value):
+        bar = self.message_view.verticalScrollBar()
+        if value >= bar.maximum():
+            self.go_to_next_post()
+
+    def go_to_next_post(self):
+        current_index = self.message_list.currentIndex()
+        next_index = self.message_list.model().index(current_index.row() + 1, 0)
+        if next_index.isValid():
+            self.message_list.setCurrentIndex(next_index)
+            self.show_message(next_index)
 
 
 def load_theme(app_, theme_file):

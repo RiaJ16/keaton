@@ -1,4 +1,6 @@
 import bbcode
+import html
+import re
 
 COLOR_MAP = {
     "#3366cc": "#2980b9",  # azul fuerte → azul más usable
@@ -23,6 +25,9 @@ def build_bbcode_parser():
     parser.add_simple_formatter("i", "<i>%(value)s</i>")
     parser.add_simple_formatter("u", "<u>%(value)s</u>")
 
+    # Extras
+    parser.add_simple_formatter("dice", '<p style="color:#2980b9; text-decoration:none;">Esto es una tirada de dados: %(value)s</p>')
+
     # Separadores
     parser.add_simple_formatter("hr", "<hr>", standalone=True)
     parser.add_simple_formatter("lh", "<hr>")
@@ -33,18 +38,16 @@ def build_bbcode_parser():
     # Quote con autor → aquí está el fix
     parser.add_formatter(
         "quote",
+        render_func=render_quote,
+        standalone=False,
+        same_tag_closes=True,
+        strip=True
+    )
+
+    parser.add_formatter(
+        "url",
         render_func=lambda tag_name, value, options, parent, context:
-        f"""
-            <table border="0" cellspacing="0" cellpadding="0" width="100%">
-                <tr>
-                    <td width="30"></td>
-                    <td width="5" bgcolor="#2980b9"></td>
-                    <td bgcolor="#25000000" style="padding-left: 8px;">
-                        <b>{options.get('quote', '')} dijo:</b><br>{value}
-                    </td>
-                </tr>
-            </table>
-            """,
+            f"<a href='{clean_url(options.get(tag_name, ''))}'>{value}</a>",
         standalone=False,
         same_tag_closes=True,
         strip=True
@@ -63,7 +66,17 @@ def build_bbcode_parser():
     parser.add_formatter(
         "spoiler",
         render_func=lambda tag_name, value, options, parent, context:
-            f"<details><summary><i>Spoiler</i></summary>{value}</details>",
+        f"""
+                <table border="0" cellspacing="0" cellpadding="0" width="100%">
+                    <tr>
+                        <td width="30"></td>
+                        <td width="5" bgcolor="#c0392b"></td>
+                        <td bgcolor="#25000000" style="padding-left: 8px;">
+                            <b>Spoiler:</b><br>{value}
+                        </td>
+                    </tr>
+                </table>
+                """,
         standalone=False,
         strip=True
     )
@@ -72,7 +85,27 @@ def build_bbcode_parser():
         "img",
         replace_links=False,
         render_func=lambda tag_name, value, options, parent, context: (
-            f'<img src="{value.strip()}" style="max-width:100%; max-height:400px;">'
+            f'<a href="{clean_url(value.strip())}"><img src="{clean_url(value.strip())}" style="max-width:100%; max-height:400px;"></a>'
+        ),
+        standalone=False,
+        strip=True
+    )
+
+    parser.add_formatter(
+        "image",
+        replace_links=False,
+        render_func=lambda tag_name, value, options, parent, context: (
+            f'<a href="{clean_url(value.strip())}"><img src="{clean_url(value.strip())}" style="max-width:100%; max-height:400px;"></a>'
+        ),
+        standalone=False,
+        strip=True
+    )
+
+    parser.add_formatter(
+        "imagen",
+        replace_links=False,
+        render_func=lambda tag_name, value, options, parent, context: (
+            f'<a href="{clean_url(value.strip())}"><img src="{clean_url(value.strip())}" style="max-width:100%; max-height:400px;"></a>'
         ),
         standalone=False,
         strip=True
@@ -122,3 +155,36 @@ def render_size(tag_name, value, options, parent, context):
         return f"<h3>{value}</h3>"
     else:
         return f'<span style="font-size:{size_val}%">{value}</span>'
+
+
+def render_quote(tag_name, value, options, parent, context):
+    quoter = options.get(tag_name, "")
+    if quoter:
+        tagline = f"{quoter} dijo:<br>"
+    else:
+        tagline = ""
+    return f"""
+        <table border="0" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+                <td width="30"></td>
+                <td width="5" bgcolor="#2980b9"></td>
+                <td bgcolor="#25000000" style="padding-left: 8px;">
+                    <b>{tagline}</b>{value}
+                </td>
+            </tr>
+        </table>
+        """
+
+
+def clean_url(url: str) -> str:
+    """Convierte entidades HTML (&...;) en sus caracteres reales y limpia espacios extra."""
+    if not url:
+        return url
+    # Decodificar entidades HTML (&amp;, &#58;, &#46;, etc.)
+    url = html.unescape(url)
+    # Quitar espacios o saltos de línea molestos
+    url = url.strip()
+    # Asegurar que empiece con http o https
+    # if not re.match(r'^https?://', url):
+    #     url = "http://" + url  # fallback mínimo
+    return url

@@ -44,7 +44,11 @@ class MensajePreview(QStyledItemDelegate):
 
         # --- Indicador de actualización ---
         clean_message = strip_bbcode(data["message"]).lstrip().lower()
-        if clean_message.startswith("actualización") or clean_message.startswith("miniactualización") or clean_message.startswith("interludio"):
+        if (clean_message.startswith("actualización")
+                or clean_message.startswith("actualizacion")
+                or clean_message.startswith("miniactualización")
+                or clean_message.startswith("miniactualizacion")
+                or clean_message.startswith("interludio")):
             badge_text = "Actualización"
             badge_font = QFont("Segoe UI", 8, QFont.Bold)
             painter.setFont(badge_font)
@@ -53,7 +57,8 @@ class MensajePreview(QStyledItemDelegate):
             badge_bg = QColor("#2980b9")
             badge_fg = QColor("#ffffff")
 
-            if clean_message.startswith("miniactualización"):
+            if (clean_message.startswith("miniactualización")
+                    or clean_message.startswith("miniactualizacion")):
                 badge_text = "Miniactualización"
                 badge_bg = QColor("#d35400")
                 badge_fg = QColor("#ffffff")
