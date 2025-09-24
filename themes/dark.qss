@@ -27,3 +27,12 @@ QToolButton::hover{
 QMenu::item:selected{
     background-color: #373737;
 }
+
+QLineEdit{
+    border: none;
+    border-bottom: 1px solid #444444;
+}
+
+QLineEdit:focus{
+    border-bottom: 1px solid #3498db;
+}

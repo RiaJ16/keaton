@@ -140,7 +140,7 @@ class Keaton(QMainWindow):
                 if query_norm not in f"{text}{username}":
                     continue
             preview = re.sub(r"\[.*?]", "", text)  # quita tags BBCode
-            preview = preview.strip().replace("\n", " ")[:80] + "..."
+            preview = preview.strip().replace("\n", " ")[:280] + "..."
             item = QStandardItem()
             item.setFlags(item.flags() & ~Qt.ItemIsEditable)
             item.setData({
@@ -385,10 +385,13 @@ class Keaton(QMainWindow):
 
     def create_search_bar(self):
         layout = QHBoxLayout(self.post_search_bar)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(0, 4, 0, 0)
         next_btn = QPushButton("↓")
         prev_btn = QPushButton("↑")
         close_btn = QPushButton("✖")
+        next_btn.setFlat(True)
+        prev_btn.setFlat(True)
+        close_btn.setFlat(True)
         layout.addWidget(self.post_search_input)
         layout.addWidget(self.label_matches)
         layout.addWidget(prev_btn)

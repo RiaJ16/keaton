@@ -30,19 +30,19 @@ QLineEdit {
     color: #f0e6c8;
 }
 
-QPushButton {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                stop:0 #d4c45b, stop:1 #a89c4f); /* dorado */
-    color: #1e2f1c;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 12pt;
-    font-weight: bold;
-}
+/*QPushButton {*/
+/*    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,*/
+/*                                stop:0 #d4c45b, stop:1 #a89c4f); *//* dorado */
+/*    color: #1e2f1c;*/
+/*    border-radius: 6px;*/
+/*    padding: 6px 12px;*/
+/*    font-size: 12pt;*/
+/*    font-weight: bold;*/
+/*}*/
 
 QPushButton:hover {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                                stop:0 #e6d878, stop:1 #b5a94f);
+    background: #b5a94f;
+    color: black;
 }
 
 QMenuBar {

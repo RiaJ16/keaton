@@ -30,14 +30,14 @@ QLineEdit {
     color: #3b2f2f;
 }
 
-QPushButton {
-    background: #d1b97f;
-    color: #2e1f0f;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 12pt;
-    font-weight: bold;
-}
+/*QPushButton {*/
+/*    background: #d1b97f;*/
+/*    color: #2e1f0f;*/
+/*    border-radius: 6px;*/
+/*    padding: 6px 12px;*/
+/*    font-size: 12pt;*/
+/*    font-weight: bold;*/
+/*}*/
 
 QPushButton:hover {
     background: #c4a86a;

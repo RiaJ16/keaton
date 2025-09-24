@@ -20,11 +20,15 @@ QTextEdit {
     line-height: 1.5em;
 }
 
-QPushButton {
-    background: #0078d7;
-    color: white;
-    border-radius: 4px;
-    padding: 6px 12px;
+/*QPushButton {*/
+/*    background: #0078d7;*/
+/*    color: white;*/
+/*    border-radius: 4px;*/
+/*    padding: 6px 12px;*/
+/*}*/
+
+QPushButton:hover{
+    background-color: #dddddd;
 }
 
 QScrollBar::handle:vertical {

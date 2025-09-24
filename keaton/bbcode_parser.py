@@ -1,3 +1,6 @@
+import json
+import os
+
 import bbcode
 import html
 import re
@@ -26,7 +29,8 @@ def build_bbcode_parser():
     parser.add_simple_formatter("u", "<u>%(value)s</u>")
 
     # Extras
-    parser.add_simple_formatter("dice", '<p style="color:#2980b9; text-decoration:none;">Esto es una tirada de dados: %(value)s</p>')
+    parser.add_simple_formatter("googlesm", '%(value)s')
+    parser.add_simple_formatter("googlefont", '%(value)s')
 
     # Separadores
     parser.add_simple_formatter("hr", "<hr>", standalone=True)
@@ -39,6 +43,14 @@ def build_bbcode_parser():
     parser.add_formatter(
         "quote",
         render_func=render_quote,
+        standalone=False,
+        same_tag_closes=True,
+        strip=True
+    )
+
+    parser.add_formatter(
+        "dice",
+        render_func=load_roll_by_id,
         standalone=False,
         same_tag_closes=True,
         strip=True
@@ -188,3 +200,14 @@ def clean_url(url: str) -> str:
     # if not re.match(r'^https?://', url):
     #     url = "http://" + url  # fallback mínimo
     return url
+
+def load_roll_by_id(tag_name, value, options, parent, context):
+    text = "<b>Tirada no encontrada</b>"
+    with open(os.path.join("data", "rolls.json"), "r", encoding="utf-8") as f:
+        rolls = json.loads(f.read())
+    roll = next((roll for roll in rolls if roll.get("dice_code") == value), None)
+    if roll:
+        text = (f"<b>Resultados de la tirada "
+                f"{roll.get('numdice')}d{roll.get('numsides')}:</b>"
+                f" {', '.join(roll.get('totalroll').rstrip(':').split(':'))}")
+    return text
